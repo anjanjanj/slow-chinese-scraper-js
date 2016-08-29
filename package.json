@@ -1,0 +1,25 @@
+{
+  "name": "slow-chinese-scraper-js",
+  "version": "0.1.0",
+  "description": "slow-chinese.com scraper",
+  "main": "entry.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Andrew McAlister <anjanjanj@users.noreply.github.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/anjanjanj/slow-chinese-scraper-js.git"
+  },
+  "dependencies": {
+    "babel-polyfill": "^6.13.0",
+    "babel-preset-es2015": "^6.14.0",
+    "babel-register": "^6.14.0",
+    "cheerio": "^0.22.0",
+    "lodash": "^4.15.0",
+    "lowdb": "^0.13.1",
+    "request": "^2.74.0",
+    "request-promise-native": "^1.0.3"
+  }
+}
