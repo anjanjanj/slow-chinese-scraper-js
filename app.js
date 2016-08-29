@@ -4,18 +4,58 @@ import low from 'lowdb';
 
 const db = low('db.json');
 
-const uri = 'http://www.slow-chinese.com/podcast/';
+const indexUri = 'http://www.slow-chinese.com/podcast/';
 
-var options = {
-  uri: uri,
-  transform: function(body) {
-    return cheerio.load(body);
-  }
-};
+function scrapeUri(uri) {
+  const options = {
+    uri: uri,
+    transform: function(body) {
+      return cheerio.load(body);
+    }
+  };
 
-console.log('Opening connection to ' + uri);
-rp(options)
-  .then(function($) {
+  console.log('Grabbing ' + uri);
+  return rp(options);
+}
+
+function getMp3($) {
+  const mp3Url = $('a').filter((i, elem) => {
+    return /http.+\.mp3/.test($(elem).attr('href'));
+  }).attr('href');
+
+  return mp3Url;
+}
+
+function getContent($) {
+  let possibleParagraphs = $('p.powerpress_embed_box').next().find('p');
+
+  return possibleParagraphs.map((i, elem) => {
+    // if (isChinese(elem))
+    return $(elem).text();
+  }).get().join('\n\n');
+}
+
+function scrapePost(uri) {
+  return new Promise((resolve, reject) => {
+    scrapeUri(uri)
+      .then(($) => {
+        const scrapedData = {
+          mp3: getMp3($),
+          content: getContent($)
+        };
+
+        console.log(scrapedData);
+        resolve(scrapedData);
+      })
+      .catch((err) => {
+        console.log(err);
+        reject(err);
+      });
+  });
+}
+
+scrapeUri(indexUri)
+  .then(($) => {
     // scraped successfully
 
     // *** get post names
@@ -63,20 +103,24 @@ rp(options)
 
       if (db.get('posts').find({id: post.id}).value().content) {
         // post has already been scraped
-        console.log('post', post.id, 'already scraped, ignoring!');
+        // console.log('post', post.id, 'already scraped, ignoring!');
       }
       else {
         // post has not been scraped yet
-        console.log('post', post.id, 'not yet scraped, going to scrape');
-        postsToScrape.push(post.id);
+        // console.log('post', post.id, 'not yet scraped, going to scrape');
+        postsToScrape.push(post);
       }
     });
 
-    // *** @TODO: start to go through scrape posts individually and scrape text and mp3 url
-
+    console.log('Scraping ' + postsToScrape.length + ' posts...');
+    // console.log('Going to scrape the following ids:', postsToScrape.map((post) => post.id));
+    let p = Promise.resolve();
+    postsToScrape.forEach((post) => {
+      p = p.then(() => scrapePost(post.url));
+    });
 
   })
-  .catch(function(err) {
+  .catch((err) => {
     // something went wrong with the request
     console.log(err);
   });
