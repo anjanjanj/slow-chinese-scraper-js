@@ -1,49 +1,13 @@
-import rp from 'request-promise-native';
-import cheerio from 'cheerio';
 import low from 'lowdb';
-import franc from 'franc';
+
+import scrapeUri from './modules/scrapeUri';
+import { getMp3, getContent, getList } from './modules/slowChinese';
 
 const db = low('db.json');
 
 const indexUri = 'http://www.slow-chinese.com/podcast/';
 
-function scrapeUri(uri) {
-  const options = {
-    uri: uri,
-    transform: function(body) {
-      return cheerio.load(body);
-    }
-  };
-
-  console.log('Grabbing ' + uri);
-  return rp(options);
-}
-
-function getMp3($) {
-  const mp3Url = $('a').filter((i, elem) => {
-    return /http.+\.mp3/.test($(elem).attr('href'));
-  }).attr('href');
-
-  return mp3Url;
-}
-
-function getContent($) {
-  let possibleParagraphs = $('p.powerpress_embed_box').next().find('p')
-                            .add($('p.powerpress_embed_box').nextAll('p'));
-
-  return possibleParagraphs.map((i, elem) => {
-    const text = $(elem).text();
-
-    // detect for Chinese language text using franc:
-    // (to avoid transcripts, comments, etc.)
-    if (franc(text, {'whitelist' : ['cmn', 'eng']}) === 'cmn'
-      && $(elem).closest('section#comments').length === 0) {
-
-      return text;
-    }
-  }).get();
-}
-
+// @TODO pull this out into a slowChinese module
 function scrapePost(uri) {
   return new Promise((resolve, reject) => {
     scrapeUri(uri)
@@ -74,31 +38,8 @@ scrapeUri(indexUri)
   .then(($) => {
     // scraped successfully
 
-    // *** get post names
-
-    let postNames = $('article h2 a');
-
-    console.log(postNames.length + ' articles found...');
-
-    let fullList = [];
-
-    $(postNames).each((i, elem) => {
-      // @FIXME: do regex instead. some posts are incorrectly titled without ':'
-      // /(\d+):\s*(.+)/
-      const url = $(elem).attr('href');
-
-      const [episodeNumber, episodeTitle] = $(elem)
-        .text()
-        .replace(/^#/, '')
-        .split(':')
-        .map((str) => str.trim());
-
-      fullList.push({
-        id: episodeNumber,
-        title: episodeTitle,
-        url: url
-      });
-    });
+    // *** get post list
+    let fullList = getList($);
 
     if (!db.has('posts').value()) {
       // first use of database, need to save all posts we received
@@ -124,8 +65,8 @@ scrapeUri(indexUri)
     });
 
     console.log('Scraping ' + postsToScrape.length +
-                '/' + postNames.length + ' posts...');
-                
+                '/' + fullList.length + ' posts...');
+
     let p = Promise.resolve();
     postsToScrape.forEach((post) => {
       p = p.then(() => scrapePost(post.url));
