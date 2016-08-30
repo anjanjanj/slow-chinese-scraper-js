@@ -117,20 +117,15 @@ scrapeUri(indexUri)
           .value();
       }
 
-      if (db.get('posts').find({id: post.id}).value().content) {
-        // post has already been scraped
-        // console.log('post', post.id, 'already scraped, ignoring!');
-      }
-      else {
+      if (!db.get('posts').find({id: post.id}).value().content) {
         // post has not been scraped yet
-        // console.log('post', post.id, 'not yet scraped, going to scrape');
         postsToScrape.push(post);
       }
     });
 
     console.log('Scraping ' + postsToScrape.length +
                 '/' + postNames.length + ' posts...');
-    // console.log('Going to scrape the following ids:', postsToScrape.map((post) => post.id));
+                
     let p = Promise.resolve();
     postsToScrape.forEach((post) => {
       p = p.then(() => scrapePost(post.url));
