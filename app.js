@@ -53,7 +53,14 @@ function scrapePost(uri) {
           content: getContent($)
         };
 
-        console.log(scrapedData);
+        // @TODO: put this after resolving instead
+        db.get('posts')
+          .find({ url: uri })
+          .assign(scrapedData)
+          .value();
+
+        console.log('Scraped ' + scrapedData.content.length +
+                    ' paragraphs from ' + uri);
         resolve(scrapedData);
       })
       .catch((err) => {
@@ -71,7 +78,7 @@ scrapeUri(indexUri)
 
     let postNames = $('article h2 a');
 
-    console.log(postNames.length + ' articles found. Scraping list...');
+    console.log(postNames.length + ' articles found...');
 
     let fullList = [];
 
@@ -121,7 +128,8 @@ scrapeUri(indexUri)
       }
     });
 
-    console.log('Scraping ' + postsToScrape.length + ' posts...');
+    console.log('Scraping ' + postsToScrape.length +
+                '/' + postNames.length + ' posts...');
     // console.log('Going to scrape the following ids:', postsToScrape.map((post) => post.id));
     let p = Promise.resolve();
     postsToScrape.forEach((post) => {
