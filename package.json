@@ -4,7 +4,8 @@
   "description": "slow-chinese.com scraper",
   "main": "entry.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node entry.js"
   },
   "author": "Andrew McAlister <anjanjanj@users.noreply.github.com>",
   "license": "MIT",
