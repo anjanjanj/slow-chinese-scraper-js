@@ -1,6 +1,7 @@
 import rp from 'request-promise-native';
 import cheerio from 'cheerio';
 import low from 'lowdb';
+import franc from 'franc';
 
 const db = low('db.json');
 
@@ -27,12 +28,20 @@ function getMp3($) {
 }
 
 function getContent($) {
-  let possibleParagraphs = $('p.powerpress_embed_box').next().find('p');
+  let possibleParagraphs = $('p.powerpress_embed_box').next().find('p')
+                            .add($('p.powerpress_embed_box').nextAll('p'));
 
   return possibleParagraphs.map((i, elem) => {
-    // if (isChinese(elem))
-    return $(elem).text();
-  }).get().join('\n\n');
+    const text = $(elem).text();
+
+    // detect for Chinese language text using franc:
+    // (to avoid transcripts, comments, etc.)
+    if (franc(text, {'whitelist' : ['cmn', 'eng']}) === 'cmn'
+      && $(elem).closest('section#comments').length === 0) {
+
+      return text;
+    }
+  }).get();
 }
 
 function scrapePost(uri) {
