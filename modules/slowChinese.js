@@ -51,14 +51,16 @@ class SlowChineseIndex {
     let fullList = [];
 
     $(postElements).each((i, elem) => {
-      // @FIXME: do regex instead. some post titles are missing ':'
-      // /(\d+):\s*(.+)/
+      // get url of this post
       const url = $(elem).attr('href');
 
-      const [episodeNumber, episodeTitle] = $(elem)
-        .text()
-        .replace(/^#/, '')
-        .split(':')
+      // use a regex to get the post id and title from its link text
+      const re = /(\d+):?\s*(.+)/;
+      let numberAndTitle = $(elem).text();
+
+      let match = re.exec(numberAndTitle);
+
+      const [episodeNumber, episodeTitle] = [match[1], match[2]]
         .map((str) => str.trim());
 
       fullList.push({
@@ -95,7 +97,6 @@ export default class SlowChinese {
     list.forEach((post) => {
       if (!db.get(this.options.dbObjectName).find({id: post.id}).value()) {
         // if this post hasn't been saved yet in the database at all, save it
-        console.log('saving', post.id);
         db.get(this.options.dbObjectName)
           .push(post)
           .value();
@@ -163,7 +164,7 @@ export default class SlowChinese {
         let postsToScrape = this._getListOfPostsToScrape(indexList);
 
         console.log('Scraping ' + postsToScrape.length +
-                    '/' + indexList.length + ' posts...\n');
+                    '/' + indexList.length + ' new posts...\n');
 
         // now scrape and save each new post individually
         postsToScrape.reduce((p, post) => {
