@@ -72,12 +72,15 @@ class SlowChineseIndex {
   }
 }
 
-export default class SlowChinese {
-  constructor(db, options = {dbObjectName: 'posts', indexUrl: 'http://www.slow-chinese.com/podcast/'}) {
-    this.db = db;
+const defaultOptions = {
+  dbObjectName: 'posts',
+  indexUrl: 'http://www.slow-chinese.com/podcast/'
+};
 
-    // @FIXME
-    this.options = options;
+export default class SlowChinese {
+  constructor(db, options) {
+    this.db = db;
+    this.options = Object.assign({}, defaultOptions, options);;
   }
 
   _getListOfPostsToScrape(list) {
@@ -114,7 +117,7 @@ export default class SlowChinese {
             .value();
 
           console.log('Scraped ' + scrapedData.content.length +
-                      ' paragraphs from ' + uri);
+                      ' paragraphs from ' + uri + '\n');
           resolve(scrapedData);
         })
         .catch((err) => {
@@ -160,7 +163,7 @@ export default class SlowChinese {
         let postsToScrape = this._getListOfPostsToScrape(indexList);
 
         console.log('Scraping ' + postsToScrape.length +
-                    '/' + indexList.length + ' posts...');
+                    '/' + indexList.length + ' posts...\n');
 
         // now scrape and save each new post individually
         postsToScrape.reduce((p, post) => {
