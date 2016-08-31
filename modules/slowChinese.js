@@ -1,6 +1,7 @@
 import franc from 'franc';
+import scrapeUri from './scrapeUri';
 
-export class SlowChinesePost {
+class SlowChinesePost {
   constructor(cheerioObject) {
     this.$ = cheerioObject;
   }
@@ -36,7 +37,7 @@ export class SlowChinesePost {
   }
 }
 
-export class SlowChineseIndex {
+class SlowChineseIndex {
   constructor(cheerioObject) {
     this.$ = cheerioObject;
   }
@@ -69,4 +70,113 @@ export class SlowChineseIndex {
 
     return fullList;
   }
+}
+
+export default class SlowChinese {
+  constructor(db, options = {dbObjectName: 'posts', indexUrl: 'http://www.slow-chinese.com/podcast/'}) {
+    this.db = db;
+
+    // @FIXME
+    this.options = options;
+  }
+
+  _getListOfPostsToScrape(list) {
+    return list.filter((post) =>
+      !this.db.get(this.options.dbObjectName).find({ id: post.id }).value().content
+    );
+  }
+
+  _saveUnseenIndexPosts(list) {
+    let db = this.db;
+
+    list.forEach((post) => {
+      if (!db.get(this.options.dbObjectName).find({id: post.id}).value()) {
+        // if this post hasn't been saved yet in the database at all, save it
+        console.log('saving', post.id);
+        db.get(this.options.dbObjectName)
+          .push(post)
+          .value();
+      }
+    });
+  }
+
+  _scrapePostAndSave(uri) {
+    let db = this.db;
+    return new Promise((resolve, reject) => {
+      scrapeUri(uri)
+        .then(($) => {
+          let post = new SlowChinesePost($);
+          const scrapedData = post.getData();
+
+          db.get(this.options.dbObjectName)
+            .find({ url: uri })
+            .assign(scrapedData)
+            .value();
+
+          console.log('Scraped ' + scrapedData.content.length +
+                      ' paragraphs from ' + uri);
+          resolve(scrapedData);
+        })
+        .catch((err) => {
+          console.log(err);
+          reject(err);
+        });
+    });
+  }
+
+  _getIndexData(uri) {
+    return new Promise((resolve, reject) => {
+      scrapeUri(uri)
+        .then(($) => {
+          // scraped successfully, get post list
+          let index = new SlowChineseIndex($);
+          let fullList = index.getData();
+          resolve(fullList);
+        })
+        .catch((err) => {
+          reject(err);
+        });
+    });
+  }
+
+  scrape() {
+    let db = this.db;
+
+    return new Promise((resolve, reject) => {
+      // first scrape index post listing
+      this._getIndexData(this.options.indexUrl).then((indexList) => {
+
+        // if the db object doesn't exist, we just save the whole index
+        if (!db.has(this.options.dbObjectName).value()) {
+          db.set(this.options.dbObjectName, indexList)
+            .value();
+        }
+        else {
+          // otherwise save any index posts that haven't been saved yet
+          this._saveUnseenIndexPosts(indexList);
+        }
+
+        // get a list of all posts that haven't been scraped yet
+        let postsToScrape = this._getListOfPostsToScrape(indexList);
+
+        console.log('Scraping ' + postsToScrape.length +
+                    '/' + indexList.length + ' posts...');
+
+        // now scrape and save each new post individually
+        postsToScrape.reduce((p, post) => {
+          return p.then(() => this._scrapePostAndSave(post.url));
+        }, Promise.resolve()).then((result) => {
+            resolve('Site scraped successfully!');
+        })
+        .catch((err) => {
+          reject(err);
+        });
+
+      })
+      .catch((err) => {
+        reject(err);
+      });
+    });
+  }
+
 }
