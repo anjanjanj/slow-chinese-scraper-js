@@ -1,24 +1,25 @@
 import low from 'lowdb';
 
 import scrapeUri from './modules/scrapeUri';
-import { getMp3, getContent, getList } from './modules/slowChinese';
+// import { getMp3, getContent, getList } from './modules/slowChinese';
+import { SlowChineseIndex, SlowChinesePost } from './modules/slowChinese';
 
 const db = low('db.json');
 
 const indexUri = 'http://www.slow-chinese.com/podcast/';
+const dbObjectName = 'posts';
 
-// @TODO pull this out into a slowChinese module
+// @TODO pull all of this out into a slowChinese module
 function scrapePost(uri) {
   return new Promise((resolve, reject) => {
     scrapeUri(uri)
       .then(($) => {
-        const scrapedData = {
-          mp3: getMp3($),
-          content: getContent($)
-        };
+
+        let post = new SlowChinesePost($);
+        const scrapedData = post.getData();
 
         // @TODO: put this after resolving instead
-        db.get('posts')
+        db.get(dbObjectName)
           .find({ url: uri })
           .assign(scrapedData)
           .value();
@@ -34,31 +35,33 @@ function scrapePost(uri) {
   });
 }
 
+// scrape posts list index
 scrapeUri(indexUri)
   .then(($) => {
     // scraped successfully
 
     // *** get post list
-    let fullList = getList($);
+    let index = new SlowChineseIndex($);
+    let fullList = index.getData();
 
-    if (!db.has('posts').value()) {
+    if (!db.has(dbObjectName).value()) {
       // first use of database, need to save all posts we received
-      db.set('posts', fullList)
+      db.set(dbObjectName, fullList)
         .value();
     }
 
     let postsToScrape = [];
 
     fullList.forEach((post) => {
-      if (!db.get('posts').find({id: post.id}).value()) {
+      if (!db.get(dbObjectName).find({id: post.id}).value()) {
         // if this post hasn't been saved yet in the database at all, save it
         console.log('saving', post.id);
-        db.get('posts')
+        db.get(dbObjectName)
           .push(post)
           .value();
       }
 
-      if (!db.get('posts').find({id: post.id}).value().content) {
+      if (!db.get(dbObjectName).find({id: post.id}).value().content) {
         // post has not been scraped yet
         postsToScrape.push(post);
       }
